@@ -27,10 +27,9 @@ class minimizercss extends Command
      *
      * @return int
      */
-    public function handle()
-    {
+    public function handle(){
         $dom = new Dom;
-        $dom->loadFromUrl('https://www.google.com');
+        $dom->loadFromUrl('https://ellibrodepython.com/');
         $html = $dom->outerHtml;
         //dd($html);
         $html_string = $dom->loadStr($html);
@@ -67,7 +66,9 @@ class minimizercss extends Command
             }
         }
 
-            dd($dom->outerHtml);
+
+           dd($classes, $ids);
+
     }
 
     private function check_name_exisist($name, $classes){
@@ -90,6 +91,27 @@ class minimizercss extends Command
         return $new_name;
     }
 
+
+    protected function css_to_minimizer($html){
+        $css_minimized_list = collect([]);
+        preg_match_all('/<link rel="stylesheet" href="(.*?)" \/>/', $html, $links, PREG_SET_ORDER, 0);
+        $links = collect($links)->flatten()->filter(fn ($link) => strpos($link, "https") === 0);
+        $links->each(function ($link) use ($css_minimized_list){
+           $css_original = file_get_contents($link);
+           $css_minimized = $this->minimize_css($css_original);
+           $css_minimized_list->push(['url' => $link, 'css_minimized' => $css_minimized]);
+        });
+
+        dump($css_minimized_list);
+    }
+
+    protected function minimize_css($css){
+        $css = preg_replace('/\/\*((?!\*\/).)*\*\//', '', $css);
+        $css = preg_replace('/\s{2,}/', ' ', $css);
+        $css = preg_replace('/\s*([:;{}])\s*/', '$1', $css);
+        $css = preg_replace('/;}/', '}', $css);
+        return $css;
+    }
 
 
 }
