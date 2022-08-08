@@ -67,7 +67,7 @@ class minimizercss extends Command
         }
 
 
-           dd($classes, $ids);
+        $this->css_to_minimizer($html, $ids, $classes);
 
     }
 
@@ -92,17 +92,35 @@ class minimizercss extends Command
     }
 
 
-    protected function css_to_minimizer($html){
+    protected function css_to_minimizer($html, $ids, $classes) {
         $css_minimized_list = collect([]);
         preg_match_all('/<link rel="stylesheet" href="(.*?)" \/>/', $html, $links, PREG_SET_ORDER, 0);
         $links = collect($links)->flatten()->filter(fn ($link) => strpos($link, "https") === 0);
-        $links->each(function ($link) use ($css_minimized_list){
+        $links->each(function ($link) use ($css_minimized_list, $ids, $classes){
            $css_original = file_get_contents($link);
-           $css_minimized = $this->minimize_css($css_original);
+           $css_original_name_replaced = $this->css_class_name_replaced($css_original, $ids, $classes);
+           $css_minimized = $this->minimize_css($css_original_name_replaced);
            $css_minimized_list->push(['url' => $link, 'css_minimized' => $css_minimized]);
         });
 
         dump($css_minimized_list);
+    }
+
+
+    protected function css_class_name_replaced($css, $ids, $classes){
+
+        dd($css);
+
+        foreach ($ids as $id) {
+            $css = preg_replace('/'.$id[1].'/', $id['new_name'], $css);
+        }
+
+        foreach ($classes as $class) {
+            $css = preg_replace('/'.$class[1].'/', $class['new_name'], $css);
+        }
+
+        dd($css);
+        return $css;
     }
 
     protected function minimize_css($css){
