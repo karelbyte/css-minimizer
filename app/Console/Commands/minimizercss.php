@@ -33,7 +33,7 @@ class minimizercss extends Command
         $dom->loadFromUrl('https://www.google.com');
         $html = $dom->outerHtml;
         //dd($html);
-        $dom->loadStr($html);
+        $html_string = $dom->loadStr($html);
 
          preg_match_all('/class="\s*(.*?)\s*"/s', $html, $obtained_classes, PREG_SET_ORDER, 0);
         preg_match_all('/id="\s*(.*?)\s*"/s', $html, $obtained_ids, PREG_SET_ORDER, 0);
@@ -51,14 +51,23 @@ class minimizercss extends Command
         foreach ($classes as $index =>$class) {
             $new_name = $this->check_name_exisist( $classes[$index]['new_name'], $classes);
             $classes[$index]['new_name'] = $new_name;
+            $original_element =  $html_string->find('.' . $classes[$index][1])[0];
+            if($original_element){
+                $original_element->setAttribute('class', $classes[$index]['new_name']);
+            }
+
         }
 
         foreach ($ids as $index =>$id) {
             $new_name = $this->check_name_exisist( $ids[$index]['new_name'], $ids);
             $ids[$index]['new_name'] = $new_name;
+            $original_element =  $html_string->find('#' . $ids[$index][1])[0];
+            if($original_element){
+                $original_element->setAttribute('id', $ids[$index]['new_name']);
+            }
         }
 
-            dd($classes, $ids);
+            dd($dom->outerHtml);
     }
 
     private function check_name_exisist($name, $classes){
