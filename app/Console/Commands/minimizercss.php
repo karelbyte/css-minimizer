@@ -38,108 +38,27 @@ class minimizercss extends Command
         preg_match_all('/id="\s*(.*?)\s*"/s', $html, $obtained_ids, PREG_SET_ORDER, 0);
         $classes = [];
         $ids = [];
+        $classes = $this->get_classes($obtained_classes);
+        $classes = $this->unique_multidimensional_array($classes, 1);
+        $classes =$this->get_new_name_classes( $classes);
+        $html = $this->html_class_name_replaced($html, $classes);
+        $ids = $this->get_ids($obtained_ids);
+        $ids = $this->get_new_name_ids($ids,$html_string);
+        $html = $this->html_id_name_replaced($dom,$html, $ids);
 
-        foreach ( $obtained_classes as $index =>$class) {
-            if (strpos($class[1]," ")) {
-                $class_array = explode(" ", $class[1]);
-                //dd($class_array);
-                foreach ($class_array as $key=>  $item) {
-                    //echo 'class'.$item.'<br>';;
-                    if ($key == 0) {
-                        $class = [
-                            0 => $obtained_classes[$index][1],
-                            1 => $item,
-                            'original'  =>  $obtained_classes[$index][1],
-                            'is_child' => false,
-                            'parent' =>'' ,
-                        ];
-                    } else {
-                        $class = [
-                            0 => $obtained_classes[$index][1],
-                            1 => $item,
-                            'original'  =>  $obtained_classes[$index][1],
-                            'is_child' => true,
-                            'parent' => $index,
-                        ];
-                    }
-
-                    $class_name = $item;
-                    $class['new_name'] = substr($class_name, 0, 1);
-                    array_push($classes, $class);
-                }
-
-            }
-            else{
-                $class_name = $class[1];
-                $class[0] = str_replace("class=", "", $class[0]);
-                $class['original'] = $class[1];
-                $class[ 'is_child'] = false;
-                 $class['parent' ] = '';
-                $class['new_name'] = substr($class_name, 0, 1);
-
-                array_push($classes, $class);
-            }
-
-        }
-
-        foreach ($obtained_ids as $index =>$id) {
-            if (strpos($id[1]," ")) {
-                $id_array = explode(" ", $id[1]);
-                foreach ($id_array as $index => $item) {
-                    $id = [
-                        0 => 'id='.$item,
-                        1 => $item,
-                    ];
-                    $id_name = $item;
-                    $id['new_name'] = substr($id_name, 0, 1);
-                    array_push($ids, $id);
-                }
-            }
-            else{
-                $id_name = $id[1];
-                $id['new_name'] = substr($id_name, 0, 1);
-                array_push($ids, $id);
-            }
-        }
-        $html_modified='';
-
-        $classes = $this->unique_multidim_array($classes, 1);
-        $classes =$this->get_name_or_id( $classes);
         //dd($classes);
-        foreach ($classes as $index =>$class) {
-            $new_name = $class['new_name'];
 
-            if ($index > 0) {
+        //dump($classes);
+        //dd($html);
 
-                if ( $class[0] === $class['original'] && $class['is_child'] == true) {
-                    $html = preg_replace('/'.$class[0].'/', $class["parent"]." ".$new_name, $html);//str_ireplace($classes[$index][1], $new_name , $html);
-                }
-                else{
-                    $html = preg_replace('/'.$class[0].'/', $new_name, $html);
 
-                }
-
-            }
-
-        }
-        dump($classes);
         dd($html);
-
-        foreach ($ids as $index =>$id) {
-            $new_name = $this->check_name_exisist( $ids[$index]['new_name'], $ids);
-            $ids[$index]['new_name'] = $new_name;
-            $original_element =  $html_string->find('#' . $ids[$index][1])[0];
-            if($original_element){
-                $original_element->setAttribute('id', $ids[$index]['new_name']);
-            }
-        }
-        dump($dom->outerHtml);
-        dd(count($classes),count($obtained_classes),count($ids),count($obtained_ids));
+        //dd(count($classes),count($obtained_classes),count($ids),count($obtained_ids));
         $this->css_to_minimizer($html, $ids, $classes);
 
     }
 
-    protected function unique_multidim_array($array, $key) {
+    protected function unique_multidimensional_array($array, $key) {
         $temp_array = array();
         $i = 0;
         $key_array = array();
@@ -155,7 +74,7 @@ class minimizercss extends Command
         return $temp_array;
     }
 
-    private function get_name_or_id( $classes) {
+    private function get_new_name_classes( $classes) {
         $classes =  array_values($classes);
         $i = 0;
 
@@ -170,8 +89,6 @@ class minimizercss extends Command
                     if ($item['original'] == $class['original'] && $item['is_child'] == false) {
                         return $item['new_name'];
                     }
-
-
                 }, $classes);
                 $parent = array_filter($parent);
                 $parent = array_values($parent);
@@ -179,11 +96,7 @@ class minimizercss extends Command
                     //dump($parent);
                     $classes[$index]['parent'] =$parent[0];
                 }
-
-
             }
-
-
              $i++;
         }
 
@@ -228,6 +141,140 @@ class minimizercss extends Command
         $css = preg_replace('/\s*([:;{}])\s*/', '$1', $css);
         $css = preg_replace('/;}/', '}', $css);
         return $css;
+    }
+
+    private function get_classes($obtained_classes)
+    {
+        $classes = [];
+        foreach ( $obtained_classes as $index =>$class) {
+            if (strpos($class[1]," ")) {
+                $class_array = explode(" ", $class[1]);
+                //dd($class_array);
+                foreach ($class_array as $key=>  $item) {
+                    //echo 'class'.$item.'<br>';;
+                    if ($key == 0) {
+                        $class = [
+                            0 => $obtained_classes[$index][1],
+                            1 => $item,
+                            'original'  =>  $obtained_classes[$index][1],
+                            'is_child' => false,
+                            'parent' =>'' ,
+                        ];
+                    } else {
+                        $class = [
+                            0 => $obtained_classes[$index][1],
+                            1 => $item,
+                            'original'  =>  $obtained_classes[$index][1],
+                            'is_child' => true,
+                            'parent' => $index,
+                        ];
+                    }
+
+                    $class_name = $item;
+                    $class['new_name'] = substr($class_name, 0, 1);
+                    array_push($classes, $class);
+                }
+
+            }
+            else{
+                $class_name = $class[1];
+                $class[0] = str_replace("class=", "", $class[0]);
+                $class['original'] = $class[1];
+                $class[ 'is_child'] = false;
+                $class['parent' ] = '';
+                $class['new_name'] = substr($class_name, 0, 1);
+
+                array_push($classes, $class);
+            }
+
+        }
+        return $classes;
+    }
+
+    private function get_ids($obtained_ids)
+    {
+        $ids = [] ;
+        foreach ($obtained_ids as $index =>$id) {
+            if (strpos($id[1]," ")) {
+                $id_array = explode(" ", $id[1]);
+                foreach ($id_array as $index => $item) {
+                    $id = [
+                        0 => 'id='.$item,
+                        1 => $item,
+                    ];
+                    $id_name = $item;
+                    $id['new_name'] = substr($id_name, 0, 1);
+                    array_push($ids, $id);
+                }
+            }
+            else{
+                $id_name = $id[1];
+                $id['new_name'] = substr($id_name, 0, 1);
+                array_push($ids, $id);
+            }
+        }
+        return $ids;
+    }
+
+    private function html_class_name_replaced($html, array $classes)
+    {
+        foreach ($classes as $index =>$class) {
+            $new_name = $class['new_name'];
+
+            if ($index > 0) {
+
+                if ( $class[0] === $class['original'] && $class['is_child'] == true) {
+                    $html = preg_replace('/'.$class[0].'/', $class["parent"]." ".$new_name, $html);//str_ireplace($classes[$index][1], $new_name , $html);
+                }
+                else{
+                    $html = preg_replace('/'.$class[0].'/', $new_name, $html);
+                }
+            }
+        }
+        return $html;
+    }
+
+    private function get_name_id($name, $ids){
+        $new_name = $name;
+        $i = 1;
+        while (true) {
+            $found = false;
+            foreach ($ids as $index=>$class) {
+                if ($class['new_name'] == $new_name) {
+                    $found = true;
+                    $new_name = $name .$i;
+                    $i++;
+                    break;
+                }
+            }
+            if (!$found) {
+                break;
+            }
+        }
+        return $new_name;
+    }
+
+    private function get_new_name_ids(array $ids,$html_string)
+    {
+        foreach ($ids as $index =>$id) {
+            $new_name = $this->get_name_id( $ids[$index]['new_name'], $ids);
+            $ids[$index]['new_name'] = $new_name;
+        }
+        return $ids;
+    }
+
+    private function html_id_name_replaced($dom,$html_string, array $ids)
+    {
+        $html_string = $dom->loadStr($html_string);
+
+        foreach ($ids as $index =>$id) {
+            $original_element =  $html_string->find('#' . $ids[$index][1])[0];
+            if($original_element){
+                $original_element->setAttribute('id', $ids[$index]['new_name']);
+            }
+        }
+        $html = $dom->outerHtml;
+        return $html;
     }
 
 
