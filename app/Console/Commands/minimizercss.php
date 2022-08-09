@@ -13,14 +13,14 @@ class minimizercss extends Command
      *
      * @var string
      */
-    protected $signature = 'app:minimizercss';
+    protected $signature = 'app:minimizercss {url}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'this command will minify the css code inside the external pages for can be created amp pages';
+    protected $description = 'This command will minify the css code inside the external pages for can be created amp pages';
 
     /**
      * Execute the console command.
@@ -29,32 +29,25 @@ class minimizercss extends Command
      */
     public function handle(){
         $dom = new Dom;
-        $dom->loadFromUrl('https://ellibrodepython.com/');
+        $dom->loadFromUrl($this->argument('url'));
         $html = $dom->outerHtml;
-        //dd($html);
+    
         $html_string = $dom->loadStr($html);
 
-         preg_match_all('/class="\s*(.*?)\s*"/s', $html, $obtained_classes, PREG_SET_ORDER, 0);
+        preg_match_all('/class="\s*(.*?)\s*"/s', $html, $obtained_classes, PREG_SET_ORDER, 0);
         preg_match_all('/id="\s*(.*?)\s*"/s', $html, $obtained_ids, PREG_SET_ORDER, 0);
-        $classes = [];
-        $ids = [];
+      
         $classes = $this->get_classes($obtained_classes);
         $classes = $this->unique_multidimensional_array($classes, 1);
-        $classes =$this->get_new_name_classes( $classes);
+        $classes = $this->get_new_name_classes($classes);
         $html = $this->html_class_name_replaced($html, $classes);
         $ids = $this->get_ids($obtained_ids);
         $ids = $this->get_new_name_ids($ids,$html_string);
         $html = $this->html_id_name_replaced($dom,$html, $ids);
-
-        //dd($classes);
-
-        //dump($classes);
-        //dd($html);
-
-
-        dd($html);
-        //dd(count($classes),count($obtained_classes),count($ids),count($obtained_ids));
+        file_put_contents('./output/index.html', $html);
         $this->css_to_minimizer($html, $ids, $classes);
+
+        dump('Process finished');
 
     }
 
@@ -93,7 +86,6 @@ class minimizercss extends Command
                 $parent = array_filter($parent);
                 $parent = array_values($parent);
                 if (count($parent) > 0) {
-                    //dump($parent);
                     $classes[$index]['parent'] =$parent[0];
                 }
             }
@@ -103,55 +95,14 @@ class minimizercss extends Command
         return $classes;
     }
 
-
-    protected function css_to_minimizer($html, $ids, $classes) {
-        $css_minimized_list = collect([]);
-        preg_match_all('/<link rel="stylesheet" href="(.*?)" \/>/', $html, $links, PREG_SET_ORDER, 0);
-        $links = collect($links)->flatten()->filter(fn ($link) => strpos($link, "https") === 0);
-        $links->each(function ($link) use ($css_minimized_list, $ids, $classes){
-           $css_original = file_get_contents($link);
-           $css_original_name_replaced = $this->css_class_name_replaced($css_original, $ids, $classes);
-           $css_minimized = $this->minimize_css($css_original_name_replaced);
-           $css_minimized_list->push(['url' => $link, 'css_minimized' => $css_minimized]);
-        });
-
-        dump($css_minimized_list);
-    }
-
-
-    protected function css_class_name_replaced($css, $ids, $classes){
-
-        dd($css);
-
-        foreach ($ids as $id) {
-            $css = preg_replace('/'.$id[1].'/', $id['new_name'], $css);
-        }
-
-        foreach ($classes as $class) {
-            $css = preg_replace('/'.$class[1].'/', $class['new_name'], $css);
-        }
-
-        dd($css);
-        return $css;
-    }
-
-    protected function minimize_css($css){
-        $css = preg_replace('/\/\*((?!\*\/).)*\*\//', '', $css);
-        $css = preg_replace('/\s{2,}/', ' ', $css);
-        $css = preg_replace('/\s*([:;{}])\s*/', '$1', $css);
-        $css = preg_replace('/;}/', '}', $css);
-        return $css;
-    }
-
-    private function get_classes($obtained_classes)
-    {
+    private function get_classes($obtained_classes){
         $classes = [];
         foreach ( $obtained_classes as $index =>$class) {
             if (strpos($class[1]," ")) {
                 $class_array = explode(" ", $class[1]);
-                //dd($class_array);
+    
                 foreach ($class_array as $key=>  $item) {
-                    //echo 'class'.$item.'<br>';;
+            
                     if ($key == 0) {
                         $class = [
                             0 => $obtained_classes[$index][1],
@@ -191,8 +142,7 @@ class minimizercss extends Command
         return $classes;
     }
 
-    private function get_ids($obtained_ids)
-    {
+    private function get_ids($obtained_ids){
         $ids = [] ;
         foreach ($obtained_ids as $index =>$id) {
             if (strpos($id[1]," ")) {
@@ -216,15 +166,14 @@ class minimizercss extends Command
         return $ids;
     }
 
-    private function html_class_name_replaced($html, array $classes)
-    {
+    private function html_class_name_replaced($html, array $classes){
         foreach ($classes as $index =>$class) {
             $new_name = $class['new_name'];
 
             if ($index > 0) {
 
                 if ( $class[0] === $class['original'] && $class['is_child'] == true) {
-                    $html = preg_replace('/'.$class[0].'/', $class["parent"]." ".$new_name, $html);//str_ireplace($classes[$index][1], $new_name , $html);
+                    $html = preg_replace('/'.$class[0].'/', $class["parent"]." ".$new_name, $html);
                 }
                 else{
                     $html = preg_replace('/'.$class[0].'/', $new_name, $html);
@@ -254,8 +203,7 @@ class minimizercss extends Command
         return $new_name;
     }
 
-    private function get_new_name_ids(array $ids,$html_string)
-    {
+    private function get_new_name_ids(array $ids,$html_string){
         foreach ($ids as $index =>$id) {
             $new_name = $this->get_name_id( $ids[$index]['new_name'], $ids);
             $ids[$index]['new_name'] = $new_name;
@@ -263,8 +211,7 @@ class minimizercss extends Command
         return $ids;
     }
 
-    private function html_id_name_replaced($dom,$html_string, array $ids)
-    {
+    private function html_id_name_replaced($dom,$html_string, array $ids){
         $html_string = $dom->loadStr($html_string);
 
         foreach ($ids as $index =>$id) {
@@ -275,6 +222,42 @@ class minimizercss extends Command
         }
         $html = $dom->outerHtml;
         return $html;
+    }
+
+
+    protected function css_to_minimizer($html, $ids, $classes){
+        $css_minimized = '';
+        preg_match_all('/<link rel="stylesheet" href="(.*?)" \/>/', $html, $links, PREG_SET_ORDER, 0);
+        $links = collect($links)->flatten()->filter(fn ($link) => strpos($link, "https") === 0);
+        $links->each(function ($link) use (&$css_minimized, $ids, $classes){
+           $css_original = file_get_contents($link);
+           $css_original_name_replaced = $this->css_class_name_replaced($css_original, $ids, $classes);
+           $css_minimized .= $this->minimize_css($css_original_name_replaced);
+        });
+        file_put_contents('./output/css_minimized.css',  $css_minimized);
+        return $css_minimized;
+    }
+
+
+    protected function css_class_name_replaced($css, $ids, $classes){
+       
+        foreach ($ids as $id) {
+            $css = preg_replace('/'.$id[1].'/', $id['new_name'], $css);
+        }
+
+        foreach ($classes as $class) {
+            $css = preg_replace('/'.$class[1].'/', $class['new_name'], $css);
+        }
+      
+        return $css;
+    }
+
+    protected function minimize_css($css){
+        $css = preg_replace('/\/\*((?!\*\/).)*\*\//', '', $css);
+        $css = preg_replace('/\s{2,}/', ' ', $css);
+        $css = preg_replace('/\s*([:;{}])\s*/', '$1', $css);
+        $css = preg_replace('/;}/', '}', $css);
+        return $css;
     }
 
 
